@@ -1,12 +1,15 @@
 import { readPool } from '@/lib/data/store'
 import { computeSurvivalFunnel, getAliveCount } from '@/lib/engine/survival'
+import { computeGraveyard } from '@/lib/engine/graveyard'
 import { SurvivalFunnelChart } from '@/components/dashboard/SurvivalFunnelChart'
+import { GraveyardChart } from '@/components/dashboard/GraveyardChart'
 import { DaySummaryCard } from '@/components/dashboard/DaySummaryCard'
 import { SCHEDULE } from '@/lib/data/schedule'
 
 export default function DashboardPage() {
   const data = readPool()
   const funnel = computeSurvivalFunnel(data)
+  const graveyard = computeGraveyard(data)
   const aliveCount = getAliveCount(data)
   const totalEntries = data.entries.length
 
@@ -64,6 +67,11 @@ export default function DashboardPage() {
       {/* Funnel chart */}
       {funnel.length > 0 && (
         <SurvivalFunnelChart data={funnel} total={totalEntries} />
+      )}
+
+      {/* Graveyard chart */}
+      {graveyard.length > 0 && (
+        <GraveyardChart data={graveyard} />
       )}
 
       {/* Day summaries */}

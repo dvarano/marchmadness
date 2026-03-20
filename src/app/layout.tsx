@@ -11,6 +11,7 @@ const isStaticExport = process.env.STATIC_EXPORT === '1'
 
 const NAV_LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/today', label: 'Today' },
   { href: '/entries', label: 'Entries' },
   { href: '/teams', label: 'Teams' },
   { href: '/analytics', label: 'Analytics' },

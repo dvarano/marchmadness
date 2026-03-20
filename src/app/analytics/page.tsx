@@ -2,6 +2,7 @@ import { readPool } from '@/lib/data/store'
 import { TEAMS } from '@/lib/data/teams'
 import { computeUpsetImpact } from '@/lib/engine/upsetImpact'
 import { computeContrarianScores } from '@/lib/engine/contrarian'
+import { computeRunway } from '@/lib/engine/runway'
 import { ExportCard } from '@/components/ExportCard'
 import { cn, pct, seedBgClass } from '@/lib/utils'
 
@@ -14,14 +15,9 @@ export default function AnalyticsPage() {
   const aliveEntries = data.entries.filter(e => e.isAlive)
   const aliveCount = aliveEntries.length
 
-  // Elimination risk: teams remaining per alive entry
-  const eliminationRisk = aliveEntries.map(entry => {
-    const teamsUsed = new Set(
-      data.picks.filter(p => p.entryId === entry.id).flatMap(p => p.teamIds)
-    )
-    const remaining = TEAMS.length - teamsUsed.size
-    return { entry, remaining }
-  }).sort((a, b) => a.remaining - b.remaining)
+  // Effective runway: viable teams per alive entry
+  const runway = computeRunway(data)
+  const tourneyEliminated = TEAMS.length - (runway[0]?.teamsStillInTourney ?? TEAMS.length)
 
   return (
     <div className="space-y-6">
@@ -110,46 +106,77 @@ export default function AnalyticsPage() {
         </ExportCard>
       )}
 
-      {/* Elimination Risk — Rule 8 */}
-      {eliminationRisk.length > 0 && (
-        <ExportCard title="Elimination Risk (Rule 8 — Running Out of Teams)">
+      {/* Effective Runway — Rule 8 */}
+      {runway.length > 0 && (
+        <ExportCard title="Effective Runway (Rule 8 — Viable Teams Remaining)">
           <p className="text-sm text-gray-400 mb-4">
-            Alive entries sorted by fewest remaining teams. Entries that run out of teams are automatically eliminated.
+            Viable picks = unused teams still alive in the tournament.
+            {tourneyEliminated > 0 && (
+              <> {tourneyEliminated} teams have been knocked out of the tourney.</>
+            )}
           </p>
-          <div className="space-y-1.5">
-            {eliminationRisk.slice(0, 20).map(({ entry, remaining }) => {
-              const riskLevel = remaining <= 5 ? 'critical' : remaining <= 15 ? 'warning' : 'safe'
-              return (
-                <div key={entry.id} className="flex items-center gap-3">
-                  <span className={cn(
-                    'w-2 h-2 rounded-full shrink-0',
-                    riskLevel === 'critical' && 'bg-red-500',
-                    riskLevel === 'warning' && 'bg-yellow-500',
-                    riskLevel === 'safe' && 'bg-green-500',
-                  )} />
-                  <span className="text-white font-medium w-40 truncate">{entry.name}</span>
-                  <div className="flex-1 h-4 bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        'h-full rounded-full',
-                        riskLevel === 'critical' && 'bg-red-500',
-                        riskLevel === 'warning' && 'bg-yellow-500',
-                        riskLevel === 'safe' && 'bg-green-500',
-                      )}
-                      style={{ width: `${(remaining / TEAMS.length * 100).toFixed(1)}%` }}
-                    />
-                  </div>
-                  <span className={cn(
-                    'text-xs w-20 text-right font-medium',
-                    riskLevel === 'critical' && 'text-red-400',
-                    riskLevel === 'warning' && 'text-yellow-400',
-                    riskLevel === 'safe' && 'text-gray-400',
-                  )}>
-                    {remaining} left
-                  </span>
-                </div>
-              )
-            })}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-800">
+                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Entry</th>
+                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Used</th>
+                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Available</th>
+                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Viable</th>
+                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Runway</th>
+                </tr>
+              </thead>
+              <tbody>
+                {runway.slice(0, 25).map(row => {
+                  const riskLevel = row.viableTeams <= 5 ? 'critical' : row.viableTeams <= 15 ? 'warning' : 'safe'
+                  return (
+                    <tr key={row.entryId} className="border-b border-gray-800/50">
+                      <td className="py-2 px-3">
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            'w-2 h-2 rounded-full shrink-0',
+                            riskLevel === 'critical' && 'bg-red-500',
+                            riskLevel === 'warning' && 'bg-yellow-500',
+                            riskLevel === 'safe' && 'bg-green-500',
+                          )} />
+                          <span className="text-white font-medium truncate">{row.entryName}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 px-3 text-gray-400">{row.teamsUsed}</td>
+                      <td className="py-2 px-3 text-gray-400">
+                        {row.teamsAvailableRaw}
+                        {row.eliminatedFromTourney > 0 && (
+                          <span className="text-red-400 text-xs ml-1">
+                            ({row.eliminatedFromTourney} dead)
+                          </span>
+                        )}
+                      </td>
+                      <td className={cn(
+                        'py-2 px-3 font-bold',
+                        riskLevel === 'critical' && 'text-red-400',
+                        riskLevel === 'warning' && 'text-yellow-400',
+                        riskLevel === 'safe' && 'text-green-400',
+                      )}>
+                        {row.viableTeams}
+                      </td>
+                      <td className="py-2 px-3 w-32">
+                        <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              'h-full rounded-full',
+                              riskLevel === 'critical' && 'bg-red-500',
+                              riskLevel === 'warning' && 'bg-yellow-500',
+                              riskLevel === 'safe' && 'bg-green-500',
+                            )}
+                            style={{ width: `${(row.viableTeams / TEAMS.length * 100).toFixed(1)}%` }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </ExportCard>
       )}

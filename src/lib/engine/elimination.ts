@@ -61,7 +61,7 @@ export function applyResult(data: PoolData, result: GameResult): PoolData {
     return entry
   })
 
-  return { entries, picks, results }
+  return { entries, picks, results, matchups: data.matchups }
 }
 
 /**
@@ -78,6 +78,7 @@ export function recomputeAllStatuses(data: PoolData): PoolData {
     })),
     picks: data.picks.map(p => ({ ...p, status: 'pending' as const })),
     results: [],
+    matchups: data.matchups,
   }
 
   // Sort results by day and apply in order

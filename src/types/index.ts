@@ -31,10 +31,17 @@ export interface GameResult {
   loserId: string
 }
 
+export interface Matchup {
+  day: number
+  teamAId: string
+  teamBId: string
+}
+
 export interface PoolData {
   entries: Entry[]
   picks: DayPick[]
   results: GameResult[]
+  matchups: Matchup[]
 }
 
 export interface DaySummary {
@@ -52,4 +59,63 @@ export interface ScheduleDay {
   round: string
   date: string
   basePicks: number
+}
+
+// ── Effective Runway ────────────────────────────────────────────────────────
+
+export interface RunwayRow {
+  entryId: string
+  entryName: string
+  isAlive: boolean
+  teamsUsed: number
+  teamsAvailableRaw: number     // 64 - teamsUsed (old metric)
+  teamsStillInTourney: number   // teams not yet eliminated from tournament
+  viableTeams: number           // available AND still in tourney
+  eliminatedFromTourney: number // available but knocked out of tourney
+}
+
+// ── Sweat Meter ─────────────────────────────────────────────────────────────
+
+export interface SweatTeam {
+  teamId: string
+  teamName: string
+  seed: number
+  region: string
+  status: 'pending' | 'won' | 'lost'
+  pickCount: number
+  entries: { id: string; name: string }[]
+  fieldRate: number
+}
+
+export interface SweatMatchup {
+  id: string
+  teamA: SweatTeam
+  teamB: SweatTeam | null
+  resolved: boolean
+  winnerId?: string
+  sweatScore: number    // % of alive field at stake in this game
+  totalAtStake: number  // total entries riding on either side
+}
+
+export interface SweatMeterResult {
+  day: number
+  dayLabel: string
+  totalAlive: number
+  matchups: SweatMatchup[]
+}
+
+// ── Graveyard / Elimination Timeline ────────────────────────────────────────
+
+export interface GraveyardSegment {
+  teamId: string
+  teamName: string
+  seed: number
+  count: number
+}
+
+export interface GraveyardDay {
+  day: number
+  label: string
+  totalEliminated: number
+  segments: GraveyardSegment[]
 }

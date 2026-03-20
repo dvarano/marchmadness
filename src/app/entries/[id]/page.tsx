@@ -1,5 +1,6 @@
 import { readPool } from '@/lib/data/store'
 import { getTeamById, TEAMS } from '@/lib/data/teams'
+import { getTournamentAliveTeams } from '@/lib/engine/runway'
 import { SCHEDULE } from '@/lib/data/schedule'
 import { cn, seedBgClass } from '@/lib/utils'
 import { notFound } from 'next/navigation'
@@ -17,6 +18,10 @@ export default function EntryDetailPage({ params }: { params: { id: string } }) 
 
   const picks = data.picks.filter(p => p.entryId === entry.id).sort((a, b) => a.day - b.day)
   const teamsUsed = new Set(picks.flatMap(p => p.teamIds))
+  const tourneyAlive = getTournamentAliveTeams(data)
+  const availableTeams = TEAMS.filter(t => !teamsUsed.has(t.id)).sort((a, b) => a.seed - b.seed)
+  const viableTeams = availableTeams.filter(t => tourneyAlive.has(t.id))
+  const deadTeams = availableTeams.filter(t => !tourneyAlive.has(t.id))
 
   return (
     <div className="space-y-6">
@@ -104,17 +109,29 @@ export default function EntryDetailPage({ params }: { params: { id: string } }) 
         </div>
       </div>
 
-      {/* Teams available */}
+      {/* Teams available — viable vs eliminated from tourney */}
       <div>
         <h2 className="text-lg font-bold text-white mb-3">
-          Teams Available ({TEAMS.length - teamsUsed.size})
-          {TEAMS.length - teamsUsed.size <= 5 && (
-            <span className="text-red-400 text-sm font-normal ml-2">Low — elimination risk!</span>
+          Teams Available ({availableTeams.length})
+          {viableTeams.length <= 5 && (
+            <span className="text-red-400 text-sm font-normal ml-2">Low viable picks — elimination risk!</span>
           )}
         </h2>
+        {deadTeams.length > 0 && (
+          <p className="text-sm text-gray-400 mb-3">
+            <span className="text-green-400 font-medium">{viableTeams.length} viable</span>
+            {' · '}
+            <span className="text-gray-500">{deadTeams.length} eliminated from tourney</span>
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
-          {TEAMS.filter(t => !teamsUsed.has(t.id)).sort((a, b) => a.seed - b.seed).map(team => (
+          {viableTeams.map(team => (
             <span key={team.id} className={cn('px-2 py-1 rounded text-xs font-medium', seedBgClass(team.seed))}>
+              {team.seed} {team.name}
+            </span>
+          ))}
+          {deadTeams.map(team => (
+            <span key={team.id} className="px-2 py-1 rounded text-xs font-medium bg-gray-800 text-gray-500 line-through">
               {team.seed} {team.name}
             </span>
           ))}

@@ -1,13 +1,21 @@
 import { PickPasteBox } from '@/components/admin/PickPasteBox'
 import { ResultEntryForm } from '@/components/admin/ResultEntryForm'
+import { MatchupBoard } from '@/components/admin/MatchupBoard'
 import { readPool } from '@/lib/data/store'
-import { getTeamById } from '@/lib/data/teams'
+import { getTeamById, TEAMS } from '@/lib/data/teams'
 import { cn } from '@/lib/utils'
 
 export default function AdminPage() {
   const data = readPool()
   const totalEntries = data.entries.length
   const totalResults = data.results.length
+
+  const teamInfos = TEAMS.map(t => ({
+    id: t.id,
+    name: t.name,
+    seed: t.seed,
+    region: t.region,
+  }))
 
   return (
     <div className="space-y-8">
@@ -17,6 +25,21 @@ export default function AdminPage() {
           {totalEntries} entries · {data.picks.length} pick records · {totalResults} results
         </p>
       </div>
+
+      {/* Matchup Board — click to record winners */}
+      {data.matchups.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <h2 className="text-lg font-bold text-white mb-1">Game Results</h2>
+          <p className="text-sm text-gray-400 mb-4">
+            Click the winning team to record the result.
+          </p>
+          <MatchupBoard
+            matchups={data.matchups}
+            results={data.results}
+            teams={teamInfos}
+          />
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Pick Import */}
@@ -28,11 +51,11 @@ export default function AdminPage() {
           <PickPasteBox />
         </div>
 
-        {/* Result Entry */}
+        {/* Manual Result Entry */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h2 className="text-lg font-bold text-white mb-1">Enter Game Result</h2>
+          <h2 className="text-lg font-bold text-white mb-1">Manual Result Entry</h2>
           <p className="text-sm text-gray-400 mb-4">
-            Record a game result to update survivor statuses.
+            Fallback: enter a result manually if no matchup is loaded.
           </p>
           <ResultEntryForm />
         </div>

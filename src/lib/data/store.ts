@@ -8,6 +8,7 @@ const EMPTY: PoolData = {
   entries: [],
   picks: [],
   results: [],
+  matchups: [],
 }
 
 function ensureDataFile() {
@@ -21,7 +22,10 @@ function ensureDataFile() {
 export function readPool(): PoolData {
   ensureDataFile()
   const raw = fs.readFileSync(DATA_PATH, 'utf-8')
-  return JSON.parse(raw) as PoolData
+  const parsed = JSON.parse(raw)
+  // Backward compat: old pool.json files won't have matchups
+  if (!parsed.matchups) parsed.matchups = []
+  return parsed as PoolData
 }
 
 export function writePool(data: PoolData): void {

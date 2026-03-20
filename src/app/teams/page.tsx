@@ -7,11 +7,11 @@ export default function TeamsPage() {
   const data = readPool()
   const aliveEntries = new Set(data.entries.filter(e => e.isAlive).map(e => e.id))
   const totalAlive = aliveEntries.size
+  const totalEntries = data.entries.length
 
-  // Count picks per team across all days (alive entries only)
+  // Count picks per team across all days (ALL entries, not just alive)
   const teamPickCounts = new Map<string, number>()
   for (const pick of data.picks) {
-    if (!aliveEntries.has(pick.entryId)) continue
     for (const tid of pick.teamIds) {
       teamPickCounts.set(tid, (teamPickCounts.get(tid) ?? 0) + 1)
     }
@@ -29,18 +29,18 @@ export default function TeamsPage() {
     return { team, canPick, rate: totalAlive > 0 ? canPick / totalAlive : 0 }
   }).sort((a, b) => a.canPick - b.canPick)
 
-  // Sort teams by pick count
+  // Sort teams by pick count (rate is vs total entries, not just alive)
   const sortedTeams = TEAMS.map(team => ({
     team,
     count: teamPickCounts.get(team.id) ?? 0,
-    rate: totalAlive > 0 ? (teamPickCounts.get(team.id) ?? 0) / totalAlive : 0,
+    rate: totalEntries > 0 ? (teamPickCounts.get(team.id) ?? 0) / totalEntries : 0,
   })).sort((a, b) => b.count - a.count)
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Teams</h1>
-        <p className="text-gray-400 mt-1">Team usage across {totalAlive} alive entries</p>
+        <p className="text-gray-400 mt-1">Team usage across {totalEntries} entries ({totalAlive} alive)</p>
       </div>
 
       {/* Team Frequency */}
@@ -112,7 +112,7 @@ export default function TeamsPage() {
           {Array.from({ length: 16 }, (_, i) => i + 1).map(seed => {
             const seedTeams = TEAMS.filter(t => t.seed === seed)
             const seedPicks = seedTeams.reduce((acc, t) => acc + (teamPickCounts.get(t.id) ?? 0), 0)
-            const seedRate = totalAlive > 0 ? seedPicks / totalAlive : 0
+            const seedRate = totalEntries > 0 ? seedPicks / totalEntries : 0
             return (
               <div key={seed} className="text-center">
                 <div
@@ -122,7 +122,7 @@ export default function TeamsPage() {
                     border: `1px solid ${seedColor(seed)}40`,
                   }}
                 >
-                  <div className="text-sm font-bold" style={{ color: seedColor(seed) }}>{seed}</div>
+                  <div className="text-sm font-bold text-white">{seed}</div>
                   <div className="text-xs text-gray-300">{seedPicks}</div>
                 </div>
               </div>

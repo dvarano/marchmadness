@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm create:*)",
+      "Bash(mv temp-app/* .)",
+      "Bash(mv temp-app/.* .)",
+      "Bash(pnpm install:*)",
+      "Bash(cp:*)",
+      "Bash(pnpm build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(mv src/app/api src/app/_api_tmp)",
+      "Bash(STATIC_EXPORT=1 npx next build)",
+      "Bash(EXIT=$?)",
+      "Bash(mv src/app/_api_tmp src/app/api)",
+      "Bash(exit $EXIT)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(EXIT=$PIPESTATUS[0])",
+      "Bash(echo \"EXIT: $EXIT\")",
+      "Bash(npx next:*)",
+      "Bash(ls -d /c/[Cc]ode)",
+      "Bash(powershell.exe -Command \"\\(Get-Item C:\\\\code\\).FullName\")",
+      "Bash(rm -rf .next)",
+      "Bash(grep -v \"^$\")",
+      "Bash(STATIC_EXPORT=1 pnpm build)",
+      "Bash(taskkill:*)",
+      "Bash(pnpm run:*)",
+      "Bash(grep -n '\"\"picks\"\"' data/pool.json)",
+      "Bash(grep -n '\"\"results\"\"' data/pool.json)",
+      "Bash(grep -n '\"\"matchups\"\"' data/pool.json)",
+      "Bash(pkill -f \"next dev\")"
+    ]
+  }
+}

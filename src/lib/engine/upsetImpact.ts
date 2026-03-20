@@ -19,9 +19,14 @@ export interface UpsetImpactRow {
  * - How many are "at risk" (need other picks to survive)
  */
 export function computeUpsetImpact(data: PoolData, day: number): UpsetImpactRow[] {
-  const aliveEntries = new Set(data.entries.filter(e => e.isAlive).map(e => e.id))
-  const dayPicks = data.picks.filter(p => p.day === day && aliveEntries.has(p.entryId))
-  const totalAlive = aliveEntries.size
+  // Use entries alive at START of day (includes entries eliminated today)
+  const aliveAtDayStart = new Set(
+    data.entries
+      .filter(e => e.isAlive || (e.eliminatedOnDay !== undefined && e.eliminatedOnDay >= day))
+      .map(e => e.id)
+  )
+  const dayPicks = data.picks.filter(p => p.day === day && aliveAtDayStart.has(p.entryId))
+  const totalAlive = aliveAtDayStart.size
 
   if (totalAlive === 0 || dayPicks.length === 0) return []
 
