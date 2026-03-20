@@ -67,10 +67,22 @@ Can deploy after Step 1 (sweat meter before games), after Step 2 (results), or a
 
 ## Pool Rules Reference
 
-- 70 entries, knockout format
+- 100 entries, knockout format
 - Days 1-2 (Round 1): 2 picks required
 - Days 3-10 (Round 2+): 1 pick required
 - Buybacks allowed through Day 4 only. Buyback raises pick count for THAT DAY ONLY (Day 2: 4, Day 3: 5, Day 4: 6)
 - All picks must win to survive
 - Cannot reuse a team you've already picked
 - Running out of available teams = automatic elimination (Rule 8)
+
+## Picks & Buyback Data Model
+
+- Buyback entries: `eliminatedOnDay` is deleted and `isAlive` set to true, but their original day's pick `status` remains `'eliminated'`
+- The survival funnel counts eliminations from **pick status**, not `eliminatedOnDay`, so buyback entries are still counted as eliminated on their original day
+- `DaySummary.complete` is true when all picks for that day have resolved (no `'pending'` status)
+- `DaySummary.startCount` = prior day survivors + buybacks for this day
+
+## Deploy Script
+
+- `scripts/deploy.sh` gracefully handles missing `src/app/api` directory (may not exist if no API routes)
+- Always kill the dev server before deploying (`taskkill //F //IM node.exe` on Windows)

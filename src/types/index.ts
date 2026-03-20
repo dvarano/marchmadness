@@ -51,6 +51,7 @@ export interface DaySummary {
   eliminated: number
   buybacks: number
   survivalRate: number
+  complete: boolean
 }
 
 export interface ScheduleDay {

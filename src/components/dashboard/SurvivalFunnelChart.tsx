@@ -18,12 +18,14 @@ interface Props {
 }
 
 export function SurvivalFunnelChart({ data, total }: Props) {
-  const chartData = data.map(d => ({
-    name: `Day ${d.day}`,
-    Survivors: d.survivors,
-    Eliminated: d.eliminated,
-    Buybacks: d.buybacks,
-  }))
+  // For each day, show Start (with buybacks) and End (after eliminations) only if complete
+  const chartData: { name: string; Survivors: number }[] = []
+  for (const d of data) {
+    chartData.push({ name: `D${d.day} Start`, Survivors: d.startCount })
+    if (d.complete) {
+      chartData.push({ name: `D${d.day} End`, Survivors: d.survivors })
+    }
+  }
 
   return (
     <ExportCard title="Survival Funnel">

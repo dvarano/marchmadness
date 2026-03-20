@@ -2,6 +2,7 @@ import { readPool } from '@/lib/data/store'
 import { TEAMS } from '@/lib/data/teams'
 import { cn, seedBgClass, seedColor } from '@/lib/utils'
 import { ExportCard } from '@/components/ExportCard'
+import { FilteredPickCharts } from '@/components/teams/FilteredPickCharts'
 
 export default function TeamsPage() {
   const data = readPool()
@@ -9,13 +10,15 @@ export default function TeamsPage() {
   const totalAlive = aliveEntries.size
   const totalEntries = data.entries.length
 
-  // Count picks per team across all days (ALL entries, not just alive)
-  const teamPickCounts = new Map<string, number>()
-  for (const pick of data.picks) {
-    for (const tid of pick.teamIds) {
-      teamPickCounts.set(tid, (teamPickCounts.get(tid) ?? 0) + 1)
-    }
-  }
+  // Serialize data for client component
+  const teamInfos = TEAMS.map(t => ({
+    id: t.id,
+    name: t.name,
+    seed: t.seed,
+    seedBgClass: seedBgClass(t.seed),
+    seedColor: seedColor(t.seed),
+  }))
+  const pickRows = data.picks.map(p => ({ day: p.day, teamIds: p.teamIds }))
 
   // Team availability heatmap: for each team, how many alive entries can still pick it
   const teamAvailability = TEAMS.map(team => {
@@ -29,13 +32,6 @@ export default function TeamsPage() {
     return { team, canPick, rate: totalAlive > 0 ? canPick / totalAlive : 0 }
   }).sort((a, b) => a.canPick - b.canPick)
 
-  // Sort teams by pick count (rate is vs total entries, not just alive)
-  const sortedTeams = TEAMS.map(team => ({
-    team,
-    count: teamPickCounts.get(team.id) ?? 0,
-    rate: totalEntries > 0 ? (teamPickCounts.get(team.id) ?? 0) / totalEntries : 0,
-  })).sort((a, b) => b.count - a.count)
-
   return (
     <div className="space-y-6">
       <div>
@@ -43,34 +39,8 @@ export default function TeamsPage() {
         <p className="text-gray-400 mt-1">Team usage across {totalEntries} entries ({totalAlive} alive)</p>
       </div>
 
-      {/* Team Frequency */}
-      <ExportCard title="Team Pick Frequency (All Days)">
-        <div className="space-y-1.5">
-          {sortedTeams.filter(t => t.count > 0).slice(0, 30).map(({ team, count, rate }) => (
-            <div key={team.id} className="flex items-center gap-2">
-              <span className={cn('w-5 h-5 rounded text-center text-xs leading-5 font-bold shrink-0', seedBgClass(team.seed))}>
-                {team.seed}
-              </span>
-              <span className="text-sm text-gray-300 w-36 truncate">{team.name}</span>
-              <div className="flex-1 h-4 bg-gray-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${(rate * 100).toFixed(1)}%`,
-                    backgroundColor: seedColor(team.seed),
-                  }}
-                />
-              </div>
-              <span className="text-xs text-gray-400 w-16 text-right">
-                {count} ({(rate * 100).toFixed(0)}%)
-              </span>
-            </div>
-          ))}
-          {sortedTeams.every(t => t.count === 0) && (
-            <p className="text-gray-500">No picks imported yet.</p>
-          )}
-        </div>
-      </ExportCard>
+      {/* Filtered charts: Seed Histogram + Team Frequency */}
+      <FilteredPickCharts teams={teamInfos} picks={pickRows} totalEntries={totalEntries} />
 
       {/* Team Availability Heatmap */}
       <ExportCard title="Team Availability (entries that can still pick each team)">
@@ -103,31 +73,6 @@ export default function TeamsPage() {
           {totalAlive === 0 && (
             <p className="text-gray-500">No alive entries.</p>
           )}
-        </div>
-      </ExportCard>
-
-      {/* Seed Distribution */}
-      <ExportCard title="Picks by Seed">
-        <div className="grid grid-cols-8 gap-2">
-          {Array.from({ length: 16 }, (_, i) => i + 1).map(seed => {
-            const seedTeams = TEAMS.filter(t => t.seed === seed)
-            const seedPicks = seedTeams.reduce((acc, t) => acc + (teamPickCounts.get(t.id) ?? 0), 0)
-            const seedRate = totalEntries > 0 ? seedPicks / totalEntries : 0
-            return (
-              <div key={seed} className="text-center">
-                <div
-                  className="rounded-lg p-2 mb-1"
-                  style={{
-                    backgroundColor: `${seedColor(seed)}${Math.round(Math.min(seedRate * 4, 1) * 255).toString(16).padStart(2, '0')}`,
-                    border: `1px solid ${seedColor(seed)}40`,
-                  }}
-                >
-                  <div className="text-sm font-bold text-white">{seed}</div>
-                  <div className="text-xs text-gray-300">{seedPicks}</div>
-                </div>
-              </div>
-            )
-          })}
         </div>
       </ExportCard>
     </div>
