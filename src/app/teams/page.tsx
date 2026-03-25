@@ -20,8 +20,11 @@ export default function TeamsPage() {
   }))
   const pickRows = data.picks.map(p => ({ day: p.day, teamIds: p.teamIds }))
 
-  // Team availability heatmap: for each team, how many alive entries can still pick it
-  const teamAvailability = TEAMS.map(team => {
+  // Teams eliminated from the tournament (lost a game)
+  const eliminatedTeams = new Set(data.results.map(r => r.loserId))
+
+  // Team availability heatmap: only teams still in the tourney
+  const teamAvailability = TEAMS.filter(t => !eliminatedTeams.has(t.id)).map(team => {
     let canPick = 0
     for (const entry of data.entries.filter(e => e.isAlive)) {
       const usedByEntry = new Set(
@@ -43,14 +46,14 @@ export default function TeamsPage() {
       <FilteredPickCharts teams={teamInfos} picks={pickRows} totalEntries={totalEntries} />
 
       {/* Team Availability Heatmap */}
-      <ExportCard title="Team Availability (entries that can still pick each team)">
+      <ExportCard title={`Team Availability (${TEAMS.length - eliminatedTeams.size} teams remaining)`}>
         <p className="text-sm text-gray-400 mb-3">
-          Sorted by scarcity — teams fewer entries can pick appear first. Likely popular picks have high availability.
+          Only teams still in the tourney. Sorted by scarcity — teams fewer entries can pick appear first.
         </p>
         <div className="space-y-1.5">
-          {teamAvailability.filter(t => t.canPick < totalAlive).length === 0 && totalAlive > 0 ? (
-            <p className="text-gray-500">All teams are available to all entries.</p>
-          ) : teamAvailability.filter(t => t.canPick < totalAlive || totalAlive === 0).slice(0, 30).map(({ team, canPick, rate }) => (
+          {teamAvailability.length === 0 && totalAlive > 0 ? (
+            <p className="text-gray-500">No teams remaining in the tourney.</p>
+          ) : teamAvailability.map(({ team, canPick, rate }) => (
             <div key={team.id} className="flex items-center gap-2">
               <span className={cn('w-5 h-5 rounded text-center text-xs leading-5 font-bold shrink-0', seedBgClass(team.seed))}>
                 {team.seed}
