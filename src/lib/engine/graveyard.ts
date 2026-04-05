@@ -14,9 +14,9 @@ import { SCHEDULE } from '@/lib/data/schedule'
 export function computeGraveyard(data: PoolData): GraveyardDay[] {
   const days: GraveyardDay[] = []
 
-  // Get all days that have eliminations
-  const eliminatedEntries = data.entries.filter(e => e.eliminatedOnDay !== undefined)
-  if (eliminatedEntries.length === 0) return []
+  // Use pick status to find eliminations (survives buyback clearing eliminatedOnDay)
+  const eliminatedPicks = data.picks.filter(p => p.status === 'eliminated')
+  if (eliminatedPicks.length === 0) return []
 
   const dayLosers = new Map<number, Set<string>>()
   for (const result of data.results) {
@@ -24,19 +24,16 @@ export function computeGraveyard(data: PoolData): GraveyardDay[] {
     dayLosers.get(result.day)!.add(result.loserId)
   }
 
-  const maxDay = Math.max(...eliminatedEntries.map(e => e.eliminatedOnDay!))
+  const maxDay = Math.max(...eliminatedPicks.map(p => p.day))
 
   for (let d = 1; d <= maxDay; d++) {
-    const dayEliminated = eliminatedEntries.filter(e => e.eliminatedOnDay === d)
-    if (dayEliminated.length === 0) continue
+    const dayElimPicks = eliminatedPicks.filter(p => p.day === d)
+    if (dayElimPicks.length === 0) continue
 
     const losersOnDay = dayLosers.get(d) ?? new Set<string>()
     const segmentCounts = new Map<string, number>()
 
-    for (const entry of dayEliminated) {
-      const pick = data.picks.find(p => p.entryId === entry.id && p.day === d)
-      if (!pick) continue
-
+    for (const pick of dayElimPicks) {
       // Find the first picked team that lost on this day
       const causeTeamId = pick.teamIds.find(tid => losersOnDay.has(tid))
       if (causeTeamId) {
@@ -60,7 +57,7 @@ export function computeGraveyard(data: PoolData): GraveyardDay[] {
     days.push({
       day: d,
       label: schedDay?.label ?? `Day ${d}`,
-      totalEliminated: dayEliminated.length,
+      totalEliminated: dayElimPicks.length,
       segments,
     })
   }

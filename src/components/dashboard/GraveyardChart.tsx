@@ -1,101 +1,111 @@
 'use client'
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
+import { useState } from 'react'
 import type { GraveyardDay } from '@/types'
 import { ExportCard } from '@/components/ExportCard'
-import { seedColor } from '@/lib/utils'
 
 interface Props {
   data: GraveyardDay[]
 }
 
+// Distinct colors that are easy to tell apart on a dark background
+const SEGMENT_COLORS = [
+  '#ef4444', // red
+  '#f97316', // orange
+  '#eab308', // yellow
+  '#22c55e', // green
+  '#06b6d4', // cyan
+  '#3b82f6', // blue
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#f43f5e', // rose
+  '#14b8a6', // teal
+  '#a855f7', // purple
+  '#84cc16', // lime
+]
+
 export function GraveyardChart({ data }: Props) {
+  const [hovered, setHovered] = useState<{ day: number; segIdx: number } | null>(null)
   if (data.length === 0) return null
 
-  // Collect all unique team causes across all days
-  const allTeams = new Map<string, { name: string; seed: number }>()
-  for (const day of data) {
-    for (const seg of day.segments) {
-      if (!allTeams.has(seg.teamId)) {
-        allTeams.set(seg.teamId, { name: seg.teamName, seed: seg.seed })
-      }
-    }
-  }
-
-  // Build chart data: each day has a key per team
-  const chartData = data.map(day => {
-    const row: Record<string, string | number> = { name: day.label.replace(/Day \d+ – /, '') }
-    for (const seg of day.segments) {
-      row[seg.teamName] = seg.count
-    }
-    return row
-  })
-
-  // Sort teams by total eliminations for legend ordering
-  const teamTotals = new Map<string, number>()
-  for (const day of data) {
-    for (const seg of day.segments) {
-      teamTotals.set(seg.teamName, (teamTotals.get(seg.teamName) ?? 0) + seg.count)
-    }
-  }
-  const sortedTeams = [...allTeams.entries()]
-    .sort((a, b) => (teamTotals.get(b[1].name) ?? 0) - (teamTotals.get(a[1].name) ?? 0))
+  const maxEliminated = Math.max(...data.map(d => d.totalEliminated))
 
   return (
     <ExportCard title="Elimination Timeline">
       <p className="text-sm text-gray-400 mb-4">
-        Eliminations by day, colored by which team loss caused them
+        Entries eliminated per day, colored by which team loss caused them.
       </p>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-          <XAxis dataKey="name" stroke="#6b7280" tick={{ fill: '#9ca3af', fontSize: 12 }} />
-          <YAxis stroke="#6b7280" tick={{ fill: '#9ca3af', fontSize: 12 }} />
-          <Tooltip
-            contentStyle={{ background: '#111827', border: '1px solid #374151', borderRadius: 8 }}
-            labelStyle={{ color: '#f9fafb' }}
-          />
-          {sortedTeams.map(([teamId, info]) => (
-            <Bar key={teamId} dataKey={info.name} stackId="elim" fill={seedColor(info.seed)} />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
 
-      {/* Legend / narrative */}
-      <div className="mt-4 flex flex-wrap gap-3">
-        {sortedTeams.slice(0, 10).map(([teamId, info]) => (
-          <div key={teamId} className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded" style={{ backgroundColor: seedColor(info.seed) }} />
-            <span className="text-xs text-gray-400">
-              {info.name} ({teamTotals.get(info.name)})
-            </span>
-          </div>
-        ))}
+      <div className="space-y-3">
+        {data.map(day => {
+          const label = day.label.replace(/Day \d+ – /, '')
+          return (
+            <div key={day.day} className="flex items-center gap-3">
+              {/* Day label */}
+              <div className="w-16 text-xs text-gray-400 text-right shrink-0">{label}</div>
+
+              {/* Stacked bar */}
+              <div className="flex-1 flex items-center gap-px" style={{ height: 28 }}>
+                {day.segments.map((seg, i) => {
+                  const widthPct = (seg.count / maxEliminated) * 100
+                  const color = SEGMENT_COLORS[i % SEGMENT_COLORS.length]
+                  const isHovered = hovered?.day === day.day && hovered?.segIdx === i
+                  return (
+                    <div
+                      key={seg.teamId}
+                      className="h-full relative cursor-default transition-opacity"
+                      style={{
+                        width: `${widthPct}%`,
+                        backgroundColor: color,
+                        opacity: hovered && !isHovered ? 0.4 : 1,
+                        borderRadius: i === 0 ? '4px 0 0 4px' : i === day.segments.length - 1 ? '0 4px 4px 0' : 0,
+                      }}
+                      onMouseEnter={() => setHovered({ day: day.day, segIdx: i })}
+                      onMouseLeave={() => setHovered(null)}
+                    >
+                      {/* Inline label for large segments */}
+                      {widthPct > 12 && (
+                        <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white/90 truncate px-1">
+                          {seg.count}
+                        </span>
+                      )}
+                      {/* Tooltip */}
+                      {isHovered && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-10 whitespace-nowrap
+                                        bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs shadow-xl pointer-events-none">
+                          <span className="text-white font-medium">({seg.seed}) {seg.teamName}</span>
+                          <span className="text-red-400 ml-2">{seg.count} eliminated</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Total */}
+              <div className="w-8 text-xs text-gray-400 text-right shrink-0">{day.totalEliminated}</div>
+            </div>
+          )
+        })}
       </div>
 
-      {/* Narrative highlights */}
-      {data.map(day => {
-        if (day.totalEliminated === 0) return null
-        const topCause = day.segments[0]
-        if (!topCause) return null
-        return (
-          <div key={day.day} className="mt-2 text-xs text-gray-500">
-            <span className="text-gray-400 font-medium">{day.label}:</span>{' '}
-            {day.totalEliminated} eliminated
-            {topCause.count > 1 && (
-              <> — {topCause.teamName}&apos;s loss took out {topCause.count}</>
-            )}
-          </div>
-        )
-      })}
+      {/* Day narratives */}
+      <div className="mt-4 space-y-1">
+        {data.map(day => {
+          if (day.totalEliminated === 0) return null
+          const topCause = day.segments[0]
+          if (!topCause) return null
+          return (
+            <div key={day.day} className="text-xs text-gray-500">
+              <span className="text-gray-400 font-medium">{day.label}:</span>{' '}
+              {day.totalEliminated} eliminated
+              {topCause.count > 1 && (
+                <> — {topCause.teamName}&apos;s loss took out {topCause.count}</>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </ExportCard>
   )
 }
