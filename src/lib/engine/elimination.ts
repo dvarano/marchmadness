@@ -65,6 +65,57 @@ export function applyResult(data: PoolData, result: GameResult): PoolData {
 }
 
 /**
+ * Rule 8: Eliminate alive entries that ran out of valid picks.
+ *
+ * An entry is Rule 8 eliminated on the earliest started day D where:
+ *   - day D has at least one game result (day has been played),
+ *   - the entry has no pick recorded on day D, AND
+ *   - every team that played on day D had already been used by that entry
+ *     (no viable pick was available to them).
+ *
+ * The set of teams playing on day D is derived from `matchups`, so this
+ * correctly handles the case where an entry can't even field a valid pick
+ * at the start of the day.
+ */
+export function applyRule8(data: PoolData): PoolData {
+  // day -> set of team IDs playing that day (from matchups)
+  const dayTeams = new Map<number, Set<string>>()
+  for (const m of data.matchups) {
+    if (!dayTeams.has(m.day)) dayTeams.set(m.day, new Set())
+    const set = dayTeams.get(m.day)!
+    set.add(m.teamAId)
+    set.add(m.teamBId)
+  }
+
+  // Only consider days that have actually started (at least one result)
+  const startedDays = new Set(data.results.map(r => r.day))
+  const playedDays = [...dayTeams.keys()]
+    .filter(d => startedDays.has(d))
+    .sort((a, b) => a - b)
+
+  const entries = data.entries.map(entry => {
+    if (!entry.isAlive) return entry
+
+    const teamsUsed = new Set(
+      data.picks.filter(p => p.entryId === entry.id).flatMap(p => p.teamIds)
+    )
+
+    for (const day of playedDays) {
+      const hasPick = data.picks.some(p => p.entryId === entry.id && p.day === day)
+      if (hasPick) continue
+      const teamsThisDay = dayTeams.get(day)!
+      const hasViable = [...teamsThisDay].some(tid => !teamsUsed.has(tid))
+      if (!hasViable) {
+        return { ...entry, isAlive: false, eliminatedOnDay: day }
+      }
+    }
+    return entry
+  })
+
+  return { ...data, entries }
+}
+
+/**
  * Recompute all elimination statuses from scratch based on all results.
  */
 export function recomputeAllStatuses(data: PoolData): PoolData {
@@ -86,6 +137,10 @@ export function recomputeAllStatuses(data: PoolData): PoolData {
   for (const result of sortedResults) {
     current = applyResult(current, result)
   }
+
+  // Finally, eliminate any alive entry that couldn't field a valid pick
+  // on a played day (Rule 8).
+  current = applyRule8(current)
 
   return current
 }

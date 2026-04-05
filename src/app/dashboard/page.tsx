@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const graveyard = computeGraveyard(data)
   const aliveCount = getAliveCount(data)
   const totalEntries = data.entries.length
+  const winner = aliveCount === 1 ? data.entries.find(e => e.isAlive) : null
 
   // Find latest day with picks
   const maxDay = data.picks.length > 0 ? Math.max(...data.picks.map(p => p.day)) : 0
@@ -26,6 +27,20 @@ export default function DashboardPage() {
           {maxDay > 0 && latestScheduleDay && ` · Currently on ${latestScheduleDay.label}`}
         </p>
       </div>
+
+      {winner && (
+        <div className="bg-gradient-to-r from-yellow-600 via-orange-500 to-yellow-600 border border-yellow-400 rounded-xl p-6 text-center shadow-lg">
+          <div className="text-sm font-bold uppercase tracking-widest text-yellow-100">
+            Pool Winner
+          </div>
+          <div className="text-4xl font-extrabold text-white mt-2">
+            {winner.name}
+          </div>
+          <div className="text-sm text-yellow-100 mt-2">
+            Sole survivor &middot; {totalEntries - 1} eliminated
+          </div>
+        </div>
+      )}
 
       {totalEntries === 0 && (
         <div className="bg-gray-900 border border-dashed border-gray-700 rounded-xl p-8 text-center">

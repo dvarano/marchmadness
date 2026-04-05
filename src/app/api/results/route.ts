@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readPool, writePool } from '@/lib/data/store'
-import { applyResult, recomputeAllStatuses } from '@/lib/engine/elimination'
+import { applyResult, applyRule8, recomputeAllStatuses } from '@/lib/engine/elimination'
 import type { GameResult } from '@/types'
 
 export async function GET() {
@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
   }
 
   const current = readPool()
-  const updated = applyResult(current, { day, winnerId, loserId })
+  const afterResult = applyResult(current, { day, winnerId, loserId })
+  const updated = applyRule8(afterResult)
   writePool(updated)
 
   const aliveCount = updated.entries.filter(e => e.isAlive).length
