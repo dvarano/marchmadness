@@ -73,7 +73,9 @@ export function GraveyardChart({ data }: Props) {
                       {isHovered && (
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-10 whitespace-nowrap
                                         bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs shadow-xl pointer-events-none">
-                          <span className="text-white font-medium">({seg.seed}) {seg.teamName}</span>
+                          <span className="text-white font-medium">
+                            {seg.seed > 0 ? `(${seg.seed}) ${seg.teamName}` : seg.teamName}
+                          </span>
                           <span className="text-red-400 ml-2">{seg.count} eliminated</span>
                         </div>
                       )}
@@ -99,8 +101,11 @@ export function GraveyardChart({ data }: Props) {
             <div key={day.day} className="text-xs text-gray-500">
               <span className="text-gray-400 font-medium">{day.label}:</span>{' '}
               {day.totalEliminated} eliminated
-              {topCause.count > 1 && (
+              {topCause.count > 1 && topCause.seed > 0 && (
                 <> — {topCause.teamName}&apos;s loss took out {topCause.count}</>
+              )}
+              {topCause.count > 1 && topCause.seed === 0 && (
+                <> — {topCause.count} ran out of viable teams</>
               )}
             </div>
           )

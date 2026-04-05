@@ -8,12 +8,21 @@ export function computeSurvivalFunnel(data: PoolData): DaySummary[] {
   for (const schedDay of SCHEDULE) {
     const { day } = schedDay
 
-    // Only include days that have at least some picks recorded
     const dayPicks = data.picks.filter(p => p.day === day)
-    if (dayPicks.length === 0) continue
 
-    // Count eliminations from pick status (survives buyback clearing eliminatedOnDay)
-    const eliminated = dayPicks.filter(p => p.status === 'eliminated').length
+    // Rule 8 eliminations: entries marked eliminated on this day with no pick
+    // (they ran out of viable teams and never submitted a pick).
+    const rule8Eliminated = data.entries.filter(
+      e => e.eliminatedOnDay === day && !dayPicks.some(p => p.entryId === e.id)
+    ).length
+
+    // Only include days that have picks or Rule 8 eliminations
+    if (dayPicks.length === 0 && rule8Eliminated === 0) continue
+
+    // Count eliminations from pick status (survives buyback clearing
+    // eliminatedOnDay) plus Rule 8 entries with no pick on this day.
+    const eliminated =
+      dayPicks.filter(p => p.status === 'eliminated').length + rule8Eliminated
 
     // Buybacks on this day: entries whose pick count exceeds basePicks for the day
     const buybacksOnDay = dayPicks.filter(p => {
